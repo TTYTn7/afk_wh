@@ -1,15 +1,18 @@
 # Hero bas basic attacks, a skill, an ultimate, and a passive
 # basic stats - health, crit rate, dodge rate, armor, magic resist, stun resist, energy generation
-
+from afk_wh.status_effects.Affliction import Affliction
 from utilities import chance_event
 from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from Encounter import Encounter
-from BasicAttack import BasicAttack, AttackType
-from Skill import Skill
-from Ultimate import Ultimate
-from Passive import Passive
-from Status import Status
+from afk_wh.skills.BasicAttack import BasicAttack
+from DamageType import DamageType
+from afk_wh.skills.Skill import Skill
+from afk_wh.skills.Ultimate import Ultimate
+from afk_wh.skills.Passive import Passive
+from afk_wh.status_effects.Status import Status
+
+from math import sqrt
 
 
 class Hero:
@@ -72,21 +75,13 @@ class Hero:
                 return True
         return False
 
-    def attack(self, encounter: 'Encounter') -> Tuple[float, bool, AttackType]|None:
-        attack_outcome = self.basic_attack.hit(encounter, self.crit_rate, self.crit_multiplier)
-        if attack_outcome:
-            self.increment_energy(self.energy_generation_attack, attack_outcome[1])
-        return attack_outcome
-
-    def apply_defenses(self, damage: int, damage_type: AttackType) -> int|None:
-        if self.dodge():
-            return None
-        if damage_type == AttackType.physical:
+    def apply_defenses(self, damage: int, damage_type: DamageType) -> int|None:
+        if damage_type == DamageType.physical:
             pre_resist_damage = damage - ((damage * self.armor) / 100)
             post_resist_damage = pre_resist_damage - ((pre_resist_damage * self.physical_resist) / 100)
-        elif damage_type == AttackType.magic:
+        elif damage_type == DamageType.magic:
             post_resist_damage = damage - ((damage * self.magic_resist) / 100)
-        elif damage_type == AttackType.true:
+        elif damage_type == DamageType.true:
             post_resist_damage = damage
         else:
             raise ValueError(
@@ -94,9 +89,7 @@ class Hero:
         print(f'Original damage {damage} reduced to {post_resist_damage} after applying {damage_type} resists.')
         return post_resist_damage
 
-
-
-    def take_damage(self, damage: int, crit: bool, damage_type: AttackType):
+    def take_damage(self, damage: int, crit: bool, damage_type: DamageType):
         post_resist_damage = self.apply_defenses(damage, damage_type)
         if post_resist_damage:
             self.current_health -= post_resist_damage
@@ -105,3 +98,42 @@ class Hero:
                 self.status = Status.dead
             else:
                 self.increment_energy(self.energy_generation_defense, crit)
+
+    def resist_affliction(self, damage_type: 'DamageType'):
+        affliction_resisted, resist_roll, resist_chance = False, 0, 0
+        if damage_type == DamageType.true:
+            return False
+        elif damage_type == DamageType.physical:
+            resist_chance = sqrt(self.physical_resist)
+            affliction_resisted, resist_roll = chance_event(resist_chance)
+        elif damage_type == DamageType.magic:
+            resist_chance = sqrt(self.magic_resist)
+            affliction_resisted, resist_roll = chance_event(resist_chance)
+        if affliction_resisted:
+            print(f'Affliction was resisted, resist roll: {resist_roll}, resist chance: {resist_chance}%')
+            return True
+        return False
+
+    def take_affliction(self, affliction: 'Affliction', damage_type: 'DamageType'):
+        if affliction.status == Status.normal or self.resist_affliction(damage_type):
+            return None
+        else:
+            if self.status != Status.dead:
+                self.status = affliction.status
+                print(f'Affliction lands, hero status is now {self.status} for {affliction.duration} seconds')
+
+    def use_attack(self, encounter: 'Encounter') -> Tuple[float, bool, DamageType]|None:
+        attack_outcome = self.basic_attack.hit(encounter, self.crit_rate, self.crit_multiplier)
+        if attack_outcome:
+            if encounter.target.dodge():
+                return None
+            self.increment_energy(self.energy_generation_attack, attack_outcome[1])
+        return attack_outcome
+
+    def use_skill(self, encounter: 'Encounter') -> Tuple[float, bool, DamageType]|None:
+        attack_outcome = self.skill.hit(encounter, self.crit_rate, self.crit_multiplier)
+        if attack_outcome:
+            self.increment_energy(self.skill.energy_gain, attack_outcome[1])
+        return attack_outcome
+
+
