@@ -27,21 +27,15 @@ class BasicAttack:
     def can_hit(self, encounter: 'Encounter') -> bool:
         return self.attack_range >= encounter.range
 
-    def hit(self, encounter: 'Encounter', crit_rate: float, crit_multiplier: int) -> Tuple[float, AttackType]|None:
+    def hit(self, encounter: 'Encounter', crit_rate: float, crit_multiplier: int) -> Tuple[float, bool, AttackType]|None:
         if not self.can_hit(encounter):
             print(f'Can\'t hit, attack range ({self.attack_range}) is less than the distance ({encounter.range}) to target.')
             return None
-
-        if encounter.target.status not in [Status.stunned, Status.asleep]: # Stuns and sleep disable dodge
-            attack_dodged, dodge_roll = chance_event(encounter.target.dodge)
-            if attack_dodged:
-                print(f'Attack was dodged, dodge roll: {dodge_roll}, dodge chance: {encounter.target.dodge}%')
-                return None
 
         crit_strike, crit_roll = chance_event(crit_rate)
         if crit_strike:
             print(f'Attack is a crit, crit roll: {crit_roll}, crit chance: {crit_rate}')
         else:
             crit_multiplier = 100
-        return self.damage * (crit_multiplier / 100), self.attack_type
+        return self.damage * (crit_multiplier / 100), crit_strike, self.attack_type
 
