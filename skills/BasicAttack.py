@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from afk_wh.Encounter import Encounter
     from afk_wh.DamageType import DamageType
+import logging
+logger = logging.getLogger(__name__)
 
 class BasicAttack:
     def __init__(
@@ -20,12 +22,12 @@ class BasicAttack:
 
     def hit(self, encounter: 'Encounter', crit_rate: float, crit_multiplier: int) -> Tuple[float, bool, 'DamageType']|None:
         if not self.can_hit(encounter):
-            print(f'Can\'t hit, attack range ({self.attack_range}) is less than the distance ({encounter.range}) to target.')
+            logger.debug(f'Can\'t hit, attack range ({self.attack_range}) is less than the distance ({encounter.range}) to target.')
             return None
 
         crit_strike, crit_roll = chance_event(crit_rate)
         if crit_strike:
-            print(f'Attack is a crit, crit roll: {crit_roll}, crit chance: {crit_rate}')
+            logger.debug(f'Attack is a crit, crit roll: {crit_roll}, crit chance: {crit_rate}')
         else:
             crit_multiplier = 100
         return self.damage * (crit_multiplier / 100), crit_strike, self.damage_type

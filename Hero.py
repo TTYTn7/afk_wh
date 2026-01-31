@@ -13,6 +13,8 @@ from afk_wh.skills.Passive import Passive
 from afk_wh.status_effects.Status import Status
 
 from math import sqrt
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Hero:
@@ -71,7 +73,7 @@ class Hero:
         if self.status not in [Status.stunned, Status.asleep]: # Stuns and sleep disable dodge
             attack_dodged, dodge_roll = chance_event(self.dodge_rating)
             if attack_dodged:
-                print(f'Attack was dodged, dodge roll: {dodge_roll}, dodge chance: {self.dodge_rating}%')
+                logger.debug(f'Attack was dodged, dodge roll: {dodge_roll}, dodge chance: {self.dodge_rating}%')
                 return True
         return False
 
@@ -86,7 +88,7 @@ class Hero:
         else:
             raise ValueError(
                 f'Incorrect BasicAttack damage type: {damage_type}, must be \'physical\', \'magic\', or \'true\'.')
-        print(f'Original damage {damage} reduced to {post_resist_damage} after applying {damage_type} resists.')
+        logger.debug(f'Original damage {damage} reduced to {post_resist_damage} after applying {damage_type} resists.')
         return post_resist_damage
 
     def take_damage(self, damage: int, crit: bool, damage_type: DamageType):
@@ -94,7 +96,7 @@ class Hero:
         if post_resist_damage:
             self.current_health -= post_resist_damage
             if self.current_health < 1:
-                print(f'{self.name} dies tragically!')
+                logger.debug(f'{self.name} dies tragically!')
                 self.status = Status.dead
             else:
                 self.increment_energy(self.energy_generation_defense, crit)
@@ -110,7 +112,7 @@ class Hero:
             resist_chance = sqrt(self.magic_resist)
             affliction_resisted, resist_roll = chance_event(resist_chance)
         if affliction_resisted:
-            print(f'Affliction was resisted, resist roll: {resist_roll}, resist chance: {resist_chance}%')
+            logger.debug(f'Affliction was resisted, resist roll: {resist_roll}, resist chance: {resist_chance}%')
             return True
         return False
 
@@ -120,7 +122,7 @@ class Hero:
         else:
             if self.status != Status.dead:
                 self.status = affliction.status
-                print(f'Affliction lands, hero status is now {self.status} for {affliction.duration} seconds')
+                logger.debug(f'Affliction lands, hero status is now {self.status} for {affliction.duration} seconds')
 
     def use_attack(self, encounter: 'Encounter') -> Tuple[float, bool, DamageType]|None:
         attack_outcome = self.basic_attack.hit(encounter, self.crit_rate, self.crit_multiplier)
